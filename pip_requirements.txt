@@ -1,0 +1,7 @@
+Package      Version
+------------ -------
+Pillow       10.0.0
+pip          23.2.1
+pywin32      306
+setuptools   65.5.0
+ttkbootstrap 1.10.1

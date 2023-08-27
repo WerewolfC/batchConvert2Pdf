@@ -1,6 +1,7 @@
 """ GUI class"""
 import tkinter as tk
 from typing import Protocol
+from pathlib import Path
 from tkinter.filedialog import askdirectory
 from ttkbootstrap import utility
 from ttkbootstrap.tooltip import ToolTip
@@ -11,9 +12,11 @@ from bulkPdfConvert import utils
 
 class Presenter(Protocol):
     """Protocol implementation for Presenter class"""
-    def handle_get_file_list(self):
+    def handle_set_convert_options(self):
         ...
 
+    def handle_return_file_list(self):
+        ...
 
 class MainWindow(ttk.Window):
     """Main GUI class"""
@@ -31,8 +34,6 @@ class MainWindow(ttk.Window):
 
         self.file_list_data = None
         self.presenter = None
-
-        # self._create_gui()
 
     def create_gui(self, presenter):
         """Create GUI for main window"""
@@ -167,6 +168,11 @@ class MainWindow(ttk.Window):
             stretch=True
         )
         self.list_view.pack(side=tk.TOP, expand=True, fill=tk.BOTH)
+        scroll_bar = ttk.Scrollbar(master=self.list_view,
+                                   orient=tk.VERTICAL,
+                                   command=self.list_view.yview)
+        scroll_bar.pack(side=tk.RIGHT, fill=tk.Y)
+        self.list_view.configure(yscrollcommand=scroll_bar.set)
 
         self.btn_exit = ttk.Button(master=frm_listing,
                                         text="Exit",
@@ -182,17 +188,20 @@ class MainWindow(ttk.Window):
         #pack main frame
         frm_main.pack(expand=True, fill=tk.BOTH, padx=5, pady=5)
 
+    def ask_file_list(self):
+        """Ask presenter for file list
+        based on the selected Source path
+        """
+        if Path(self.source_path.get()).is_dir():
+            self.presenter.handle_return_file_list(Path(self.source_path.get()))
+
     def _source_select(self):
         """Create source select button and selection dialog
         """
         source_path = askdirectory(title="Browse for top source folder")
         if source_path:
             self.source_path.set(source_path)
-            #if target empty but same location option detected
-            #callback convert_manager to create list
-            #TODO now it returns predefined list
-            self.file_list_data = self.presenter.handle_get_file_list()
-            self.update_list_view()
+            self.ask_file_list()
 
     def _target_select(self):
         """Create target select button and selection dialog
@@ -202,11 +211,29 @@ class MainWindow(ttk.Window):
             self.target_path.set(target_path)
 
     def _callback_convert(self):
+        """Gather all the data used for conversion and
+        call presenter handle
+        """
+        target = 'not valid path'
+        #if target selected and same location option not set or
+        #target empty but same location option detected call presenter
+        if Path(self.source_path.get()).is_dir():
+            if self.opt_same_location.get() == 1:
+                target = self.source_path.get()
+            elif Path(self.target_path.get()).is_dir():
+                target = self.target_path.get()
 
-        pass
+        if Path(self.source_path.get()).is_dir() and Path(target).is_dir():
+            settings = utils.ConvertOptions(Path(self.source_path.get()),
+                                            Path(target),
+                                            self.opt_bookmark.get()
+                                            )
+            self.presenter.handle_set_convert_options(settings)
 
     def _toggle_target_button(self):
-        """Toggle target browse button state"""
+        """Toggle target browse button state
+        and try to send the convert options
+        """
         if str(self.btn_select_target['state']) == tk.NORMAL:
             self.btn_select_target.config(state=tk.DISABLED)
         elif str(self.btn_select_target['state']) == tk.DISABLED:
@@ -216,13 +243,15 @@ class MainWindow(ttk.Window):
         """Terminate the GUI"""
         self.destroy()
 
-    def update_list_view(self):
+    def update_list_view(self, list_data):
+        """Update tree view with info from parameter list_data
+        """
         #clear the treeview
         self.list_view.delete(*self.list_view.get_children())
 
         # #populate the list
         file_no = 0
-        for folder_element in self.file_list_data:
+        for folder_element in list_data:
             for each_file in folder_element.file_list:
                 file_no += 1
                 f_name = each_file
@@ -231,9 +260,9 @@ class MainWindow(ttk.Window):
                                             index=tk.END,
                                             values=(file_no, f_name, path)
                 )
-        # for (file, path) in utils.testList:
-        #     iid = self.list_view.insert(parent='',
-        #                         index=tk.END,
-        #                         values=(None, file, path)
-        #                         )
-        self.list_view.see(iid)
+        #if no suitable files are found... let the user know
+        if not file_no:
+            iid = self.list_view.insert(parent='',
+                                            index=tk.END,
+                                            values=(file_no, 'No documents found', '')
+                )
