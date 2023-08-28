@@ -12,7 +12,7 @@ from bulkPdfConvert import utils
 
 class Presenter(Protocol):
     """Protocol implementation for Presenter class"""
-    def handle_set_convert_options(self):
+    def handle_set_convert_data(self):
         ...
 
     def handle_return_file_list(self):
@@ -31,6 +31,7 @@ class MainWindow(ttk.Window):
         self.actual_progress = tk.IntVar(master=self, value=0)
         self.opt_same_location = tk.IntVar(master=self, value=0)
         self.opt_bookmark = tk.IntVar(master=self, value=1)
+        self.file_count = 0
 
         self.file_list_data = None
         self.presenter = None
@@ -226,9 +227,10 @@ class MainWindow(ttk.Window):
         if Path(self.source_path.get()).is_dir() and Path(target).is_dir():
             settings = utils.ConvertOptions(Path(self.source_path.get()),
                                             Path(target),
+                                            self.opt_same_location.get(),
                                             self.opt_bookmark.get()
                                             )
-            self.presenter.handle_set_convert_options(settings)
+            self.presenter.handle_set_convert_data(settings)
 
     def _toggle_target_button(self):
         """Toggle target browse button state
@@ -250,19 +252,19 @@ class MainWindow(ttk.Window):
         self.list_view.delete(*self.list_view.get_children())
 
         # #populate the list
-        file_no = 0
+        self.file_count = 0
         for folder_element in list_data:
             for each_file in folder_element.file_list:
-                file_no += 1
+                self.file_count += 1
                 f_name = each_file
                 path = folder_element.folder_source_path
                 iid = self.list_view.insert(parent='',
                                             index=tk.END,
-                                            values=(file_no, f_name, path)
+                                            values=(self.file_count, f_name, path)
                 )
         #if no suitable files are found... let the user know
-        if not file_no:
+        if not self.file_count:
             iid = self.list_view.insert(parent='',
                                             index=tk.END,
-                                            values=(file_no, 'No documents found', '')
+                                            values=(self.file_count, 'No documents found', '')
                 )

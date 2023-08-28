@@ -24,7 +24,6 @@ class FolderContainer:
     the file list contained in it
     """
     folder_source_path: Path = ""
-    folder_target_path: Path = ""
     file_list: List[str] = field(default_factory=None)
 
 
@@ -34,10 +33,31 @@ class ConvertOptions:
     """
     folder_source_path: Path = ""
     folder_target_path: Path = ""
+    use_same_folder : bool = False
     create_bookmarks: bool = True
 
 
-def create_file_struct(source_folder, target_folder=None):
+@dataclass
+class ConvertFile:
+    """Contains the conversion input and put full path
+    including the filename
+    """
+    input_full_path: Path = ""
+    output_full_path: Path = ""
+
+
+def recursive_check_names(output_full_path, object_pool, iterations):
+    """Check recursive if the output name exists in a pool
+    and returns the unique name
+    """
+    #check if pdf already exists and if so add -Copy to the end of name
+    if output_full_path not in [obj.output_full_path for obj in object_pool]:
+        return output_full_path
+    else:
+        new_full_path = output_full_path.with_stem(output_full_path.stem + f'({iterations})')
+        return recursive_check_names(new_full_path, object_pool, iterations + 1)
+
+def create_raw_data(source_folder):
     """Recursively reads all the files in source folder
     and creates a list to be displayed on GUI and parsed
     """
@@ -47,56 +67,24 @@ def create_file_struct(source_folder, target_folder=None):
     for (current, _, files) in raw_generator:
         #search for .doc and .docx extensions
         doc_list = []
-        doc_list = [doc_file for doc_file in files if doc_file.endswith((".docx", ".DOCX", ".doc", ".DOC"))]
+        doc_list = [doc_file for doc_file in files\
+                    if doc_file.endswith((".docx", ".DOCX", ".doc", ".DOC"))]
         if doc_list :
             #add path + file list to the raw list
-            file_list_data.append(FolderContainer(current, target_folder, doc_list))
-    print(file_list_data)
+            file_list_data.append(FolderContainer(current, doc_list))
+    #TODO: remove print
+    # from pprint import pprint
+    # pprint(file_list_data)
     return file_list_data
 
-
-def resolve_paths(input_path, output_path):
-    input_path = Path(input_path).resolve()
-    output_path = Path(output_path).resolve() if output_path else None
-    output = {}
-    if input_path.is_dir():
-        output["batch"] = True
-        output["input"] = str(input_path)
-        if output_path:
-            assert output_path.is_dir()
-        else:
-            output_path = str(input_path)
-        output["output"] = output_path
-    else:
-        output["batch"] = False
-        assert str(input_path).endswith((".docx", ".DOCX", ".doc", ".DOC"))
-        output["input"] = str(input_path)
-        if output_path and output_path.is_dir():
-            output_path = str(output_path / (str(input_path.stem) + ".pdf"))
-        elif output_path:
-            assert str(output_path).endswith(".pdf")
-        else:
-            output_path = str(input_path.parent / (str(input_path.stem) + ".pdf"))
-        output["output"] = output_path
-    return output
-
-
-def convert_to_pdf(input_path, output_path=None):
+def convert_to_pdf(*args):
     """Converts one doc file into pdf format
     """
     word = win32Client.Dispatch("Word.Application")
-    wdExportFormatPDF = 17
-    wdExportCreateHeadingBookmarks = 1
-
-    paths = resolve_paths(input_path, output_path)
-    pbar = tqdm(total=1)
-    docx_filepath = Path(paths["input"]).resolve()
-    pdf_filepath = Path(paths["output"]).resolve()
-    print(docx_filepath)
-    print(pdf_filepath)
-    doc = word.Documents.Open(str(docx_filepath))
-    doc.ExportAsFixedFormat (OutputFileName=str(pdf_filepath),
-                             ExportFormat=wdExportFormatPDF,
-                             CreateBookmarks=wdExportCreateHeadingBookmarks)
+    wd_export_format_pdf = 17
+    file_info, = args
+    doc = word.Documents.Open(str(file_info.input_full_path))
+    doc.ExportAsFixedFormat (OutputFileName=str(file_info.output_full_path),
+                             ExportFormat=wd_export_format_pdf,
+                             CreateBookmarks=True)
     doc.Close(0)
-    pbar.update(1)
