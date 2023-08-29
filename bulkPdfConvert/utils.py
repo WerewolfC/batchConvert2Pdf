@@ -3,7 +3,10 @@ from dataclasses import dataclass, field
 from os import walk
 from pathlib import Path
 from typing import List
+import concurrent.futures
+from threading import Timer
 from win32com import client as win32Client
+import pythoncom
 
 
 WINDOW_SIZE = "800x500"
@@ -72,19 +75,41 @@ def create_raw_data(source_folder):
         if doc_list :
             #add path + file list to the raw list
             file_list_data.append(FolderContainer(current, doc_list))
-    #TODO: remove print
-    # from pprint import pprint
-    # pprint(file_list_data)
     return file_list_data
 
 def convert_to_pdf(*args):
     """Converts one doc file into pdf format
     """
-    word = win32Client.Dispatch("Word.Application")
+    word = win32Client.Dispatch("Word.Application", pythoncom.CoInitialize())
     wd_export_format_pdf = 17
-    file_info, = args
+    print(args)
+    print(type(args))
+    bookmark_opt, file_info, = args[0]
     doc = word.Documents.Open(str(file_info.input_full_path))
     doc.ExportAsFixedFormat (OutputFileName=str(file_info.output_full_path),
                              ExportFormat=wd_export_format_pdf,
-                             CreateBookmarks=True)
+                             CreateBookmarks=bookmark_opt)
     doc.Close(0)
+
+def main(*args):
+    """Function used to start PDF conversion threads
+    using the ThreadPoolExecutor
+    """
+    map_bookmark = {0: False, 1: True}
+    conn, funct, file_list, opt_bookmark = args
+    bookmark_state = map_bookmark.get(opt_bookmark)
+    processed = 1
+    with concurrent.futures.ThreadPoolExecutor(4) as executor:
+        for _ in executor.map(funct, [(bookmark_state, files) for files in file_list]):
+            conn.send((processed, len(file_list)))
+            print(f'Files processed {processed}/{len(file_list)}')
+            processed+=1
+    return
+
+
+class RepeatTimer(Timer):
+    """threading Timer subclass
+    """
+    def run(self):
+        while not self.finished.wait(self.interval):
+            self.function(*self.args,**self.kwargs)

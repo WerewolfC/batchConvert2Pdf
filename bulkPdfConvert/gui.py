@@ -35,6 +35,8 @@ class MainWindow(ttk.Window):
 
         self.file_list_data = None
         self.presenter = None
+        self.progress_tuple = (0, 0) # actual, total
+        self.progress_percent = 0.0
 
     def create_gui(self, presenter):
         """Create GUI for main window"""
@@ -131,22 +133,38 @@ class MainWindow(ttk.Window):
         frm_convert.pack(side=tk.TOP, fill=tk.X)
 
         #progress bar
+        self.lbl_convert = ttk.Label(master=frm_progress,
+                                     text='Nothing to convert yet!',
+                                     justify=tk.CENTER,
+                                     anchor=tk.W
+                                     )
+        self.lbl_convert.pack(side=tk.TOP, fill=tk.X, padx=30)
         self.prgress_bar = ttk.Progressbar(master=frm_progress,
-                                           variable=self.actual_progress,
-                                           value=5,
-                                           bootstyle="success-stripped")
-        self.prgress_bar.pack(side=tk.TOP, fill=tk.X, pady=5, padx=30)
-        frm_progress.pack(side=tk.TOP, fill=tk.X)
-        #TODO: progress bar needs to show actual conversion steps
-        #self.prgress_bar.start(100)
+                                           mode=ttk.DETERMINATE,
+                                           bootstyle="success-striped")
+        self.prgress_bar.pack(side=tk.TOP, fill=tk.X, pady=2, padx=30)
+        frm_progress.pack(side=tk.TOP, fill=tk.X, pady=5)
 
         #list_view
         self.list_view = ttk.Treeview(
                                     master=frm_listing,
                                     bootstyle=utils.GUI_HEADERS,
+                                    selectmode=tk.EXTENDED,
                                     columns=[0, 1, 2],
                                     show="headings"
         )
+        self.list_view.pack(side=tk.TOP, expand=True, fill=tk.BOTH)
+        vert_scroll_bar = ttk.Scrollbar(master=self.list_view,
+                                   orient=tk.VERTICAL,
+                                   command=self.list_view.yview)
+        vert_scroll_bar.pack(side=tk.RIGHT, fill=tk.Y)
+        self.list_view.configure(yscrollcommand=vert_scroll_bar.set)
+        horiz_scroll_bar = ttk.Scrollbar(master=self.list_view,
+                                   orient=tk.HORIZONTAL,
+                                   command=self.list_view.xview)
+        horiz_scroll_bar.pack(side=tk.BOTTOM, fill=tk.X)
+        self.list_view.configure(xscrollcommand=horiz_scroll_bar.set)
+
         self.list_view.heading(0, text='No.', anchor=tk.W)
         self.list_view.heading(1, text='Filename', anchor=tk.W)
         self.list_view.heading(2, text='Full path', anchor=tk.W)
@@ -159,21 +177,15 @@ class MainWindow(ttk.Window):
         self.list_view.column(
             column=1,
             anchor=tk.W,
-            width=utility.scale_size(self, 150),
-            stretch=True
+            width=utility.scale_size(self, 200),
+            stretch=False
         )
         self.list_view.column(
-            column=1,
+            column=2,
             anchor=tk.W,
-            width=utility.scale_size(self, 350),
-            stretch=True
+            width=utility.scale_size(self, 450),
+            stretch=False
         )
-        self.list_view.pack(side=tk.TOP, expand=True, fill=tk.BOTH)
-        scroll_bar = ttk.Scrollbar(master=self.list_view,
-                                   orient=tk.VERTICAL,
-                                   command=self.list_view.yview)
-        scroll_bar.pack(side=tk.RIGHT, fill=tk.Y)
-        self.list_view.configure(yscrollcommand=scroll_bar.set)
 
         self.btn_exit = ttk.Button(master=frm_listing,
                                         text="Exit",
@@ -202,6 +214,8 @@ class MainWindow(ttk.Window):
         source_path = askdirectory(title="Browse for top source folder")
         if source_path:
             self.source_path.set(source_path)
+            self.progress_tuple = (0, 0)
+            self.update_progressbar(self.progress_tuple)
             self.ask_file_list()
 
     def _target_select(self):
@@ -268,3 +282,30 @@ class MainWindow(ttk.Window):
                                             index=tk.END,
                                             values=(self.file_count, 'No documents found', '')
                 )
+
+    def update_progressbar(self, tuple_vals):
+        """Updates the progress on progressbar
+        """
+        print(f'progressbar values {tuple_vals}')
+        self.progress_tuple = tuple_vals
+        actual, total = tuple_vals
+        try:
+            self.progress_percent  = (actual * 100) / total
+        except Exception:
+            self.progress_percent  = 0.0
+
+        print(self.progress_percent)
+
+        self.prgress_bar['value'] = self.progress_percent
+        self.update_progress_label()
+
+    def update_progress_label(self):
+        """Update text on the progress label"""
+        print('upgrade label')
+        if self.progress_percent == 0.0:
+            self.lbl_convert.config(text='No conversion active')
+        elif self.progress_percent == 100.0:
+            self.lbl_convert.config(text='Conversion finished!')
+        else:
+            self.lbl_convert.config(text=f'Converting file {str(self.progress_tuple[0])}/'\
+                                    f'{str(self.progress_tuple[1])}')

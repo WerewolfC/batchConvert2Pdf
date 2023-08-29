@@ -1,8 +1,18 @@
 """Presenter class"""
-import concurrent.futures
+from multiprocessing import Process, Pipe
 from pathlib import Path
+# from bulkPdfConvert.paralellProcess import main
 from bulkPdfConvert.utils import ConvertOptions, ConvertFile,\
-    create_raw_data, recursive_check_names, convert_to_pdf
+        create_raw_data, recursive_check_names, convert_to_pdf,\
+        RepeatTimer, main
+
+def read_from_thread(presenter):
+    """Executed by Timer thread
+    implements the Pipe rcv method
+    """
+    if presenter.parent_conn.poll():
+        recv_data = presenter.parent_conn.recv()
+        presenter.view.update_progressbar(recv_data)
 
 
 class Presenter():
@@ -13,6 +23,8 @@ class Presenter():
         self.convert_options = ConvertOptions()
         self.view_file_list = None
         self.explicit_list = []
+        self.worker_process = None
+        self.child_conn, self.parent_conn = Pipe()
 
     def run(self):
         """Create GUI and start mainloop
@@ -60,8 +72,15 @@ class Presenter():
         pprint(f'Explicit list --> \n{self.explicit_list}')
 
     def convert_files(self):
-        """Converts the files to pdf using multithreading
+        """Creates a process to execute pdf conversion
         """
-        with concurrent.futures.ProcessPoolExecutor(4) as executor:
-            for _ in executor.map(convert_to_pdf, self.explicit_list):
-                pass
+        self.worker_process = Process(target=main,
+                                      args =(self.child_conn,
+                                             convert_to_pdf,
+                                             self.explicit_list,
+                                             self.convert_options.create_bookmarks))
+        self.worker_process.start()
+
+        # create timer thread
+        self.timer_thread = RepeatTimer(1, read_from_thread, [self])
+        self.timer_thread.start() #recalling run
