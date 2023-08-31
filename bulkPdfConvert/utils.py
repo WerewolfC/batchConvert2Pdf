@@ -20,6 +20,12 @@ GUI_HEADERS = "secondary"
 GUI_THEME = "flatly"
 GUI_CHECK = "-round-toggle"
 
+#emoji
+GREEN_CHECKMARK = 'WHITE HEAVY CHECK MARK'
+RED_CROSS_MARK = 'CROSS MARK'
+# PLUS_SIGN = 'LARGE PURPLE CIRCLE'
+PLUS_SIGN = 'WHITE SQUARE BUTTON'
+
 
 @dataclass
 class FolderContainer:
@@ -100,8 +106,10 @@ def main(*args):
     bookmark_state = map_bookmark.get(opt_bookmark)
     processed = 1
     with concurrent.futures.ThreadPoolExecutor(4) as executor:
-        for _ in executor.map(funct, [(bookmark_state, files) for files in file_list]):
+        for active_task in executor.map(funct, [(bookmark_state, files) for files in file_list]):
             conn.send((processed, len(file_list)))
+            print(f'type {type(active_task)}')
+            print(f'type {active_task}')
             print(f'Files processed {processed}/{len(file_list)}')
             processed+=1
     return

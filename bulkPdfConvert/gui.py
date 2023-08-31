@@ -18,6 +18,10 @@ class Presenter(Protocol):
     def handle_return_file_list(self):
         ...
 
+    def handle_close_app(self):
+        ...
+
+
 class MainWindow(ttk.Window):
     """Main GUI class"""
     def __init__(self, theme_name):
@@ -37,6 +41,7 @@ class MainWindow(ttk.Window):
         self.presenter = None
         self.progress_tuple = (0, 0) # actual, total
         self.progress_percent = 0.0
+        self.convert_ready = ttk.DISABLED
 
     def create_gui(self, presenter):
         """Create GUI for main window"""
@@ -105,6 +110,7 @@ class MainWindow(ttk.Window):
         #options, convert and progress bar
         self.btn_convert = ttk.Button(master=frm_convert,
                                 command=self._callback_convert,
+                                state=self.convert_ready,
                                 text="Convert",
                                 bootstyle=utils.GUI_STYLE,
                                 width=10
@@ -217,6 +223,18 @@ class MainWindow(ttk.Window):
             self.progress_tuple = (0, 0)
             self.update_progressbar(self.progress_tuple)
             self.ask_file_list()
+            self.btn_convert.config(state=self.is_convert_ready())
+
+    def is_convert_ready(self):
+        """Checks if all the requirements to start the conversion process
+        are fullfilled.
+        It returns Active/Disabled values
+        """
+        if Path(self.source_path.get()).exists()\
+        and ((Path(self.target_path.get()).exists() and self.opt_same_location.get() == 0)\
+            or self.opt_same_location.get() == 1):
+            return ttk.ACTIVE
+        return ttk.DISABLED
 
     def _target_select(self):
         """Create target select button and selection dialog
@@ -224,6 +242,7 @@ class MainWindow(ttk.Window):
         target_path = askdirectory(title="Browse for save folder")
         if target_path:
             self.target_path.set(target_path)
+            self.btn_convert.config(state=self.is_convert_ready())
 
     def _callback_convert(self):
         """Gather all the data used for conversion and
@@ -255,9 +274,11 @@ class MainWindow(ttk.Window):
         elif str(self.btn_select_target['state']) == tk.DISABLED:
             self.btn_select_target.config(state=tk.NORMAL)
 
+        self.btn_convert.config(state=self.is_convert_ready())
+
     def _close(self):
-        """Terminate the GUI"""
-        self.destroy()
+        """Call presenter handle method to close the app"""
+        self.presenter.handle_close_app()
 
     def update_list_view(self, list_data):
         """Update tree view with info from parameter list_data
@@ -274,7 +295,10 @@ class MainWindow(ttk.Window):
                 path = folder_element.folder_source_path
                 iid = self.list_view.insert(parent='',
                                             index=tk.END,
-                                            values=(self.file_count, f_name, path)
+                                            values=( self.file_count,
+                                                    ttk.icons.Emoji.get(utils.PLUS_SIGN).char\
+                                                    + ' ' +f_name,
+                                                    path)
                 )
         #if no suitable files are found... let the user know
         if not self.file_count:

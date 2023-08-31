@@ -45,6 +45,12 @@ class Presenter():
         self.view_file_list = create_raw_data(path)
         self.view.update_list_view(self.view_file_list)
 
+    def handle_close_app (self):
+        """Terminate the app"""
+        if self.worker_process is not None:
+            self.worker_process.terminate()
+        self.view.destroy()
+
     def create_explicit_list(self):
         """create explicit file list [ [input0_full_path, output1_full_path], ..... ]
         """
