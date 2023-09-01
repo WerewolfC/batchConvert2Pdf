@@ -1,10 +1,9 @@
 """Presenter class"""
 from multiprocessing import Process, Pipe
 from pathlib import Path
-# from bulkPdfConvert.paralellProcess import main
 from bulkPdfConvert.utils import ConvertOptions, ConvertFile,\
         create_raw_data, recursive_check_names, convert_to_pdf,\
-        RepeatTimer, main
+        RepeatTimer, main, disable_event
 
 def read_from_thread(presenter):
     """Executed by Timer thread
@@ -30,6 +29,8 @@ class Presenter():
         """Create GUI and start mainloop
         """
         self.view.create_gui(self)
+        # disable x close main window button
+        self.view.protocol("WM_DELETE_WINDOW", disable_event)
         self.view.mainloop()
 
     def handle_set_convert_data(self, options_obj):

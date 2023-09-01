@@ -114,6 +114,10 @@ def main(*args):
             processed+=1
     return
 
+def disable_event():
+    """Empty function used to disable windows close x button"""
+    pass
+
 
 class RepeatTimer(Timer):
     """threading Timer subclass
