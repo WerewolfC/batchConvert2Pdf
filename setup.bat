@@ -68,9 +68,10 @@ set pythonExe=pythonw.exe
 set appExe=batchConvert2Pdf.py
 set launcher=launcher.bat
 echo @echo off > %launcher%
-echo %scriptPath%%pythonExe% %cwd%\%appExe% >> %launcher%
-echo [INFO]- %launcher% launcher bat file has been created - use it to launch the app!
-
+echo start "" %scriptPath%%pythonExe% %cwd%\%appExe% >> %launcher%
+echo [INFO]- %launcher% file has been created - use it to launch the app!
+echo:
+echo **************** Setup finished !!! ***************
 goto:ENDSCRIPT
 
 
@@ -79,6 +80,5 @@ echo [ERROR]- Setup procedure not finished due to missing requirements!!!
 goto ENDSCRIPT
 :ENDSCRIPT
 echo:
-echo **************** You can close the command prompt window ****************
-
+pause
 endlocal
