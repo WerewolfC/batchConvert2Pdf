@@ -6,3 +6,6 @@
 __pycache__
 *.bin
 *.log
+
+# user generated files
+launcher.bat
