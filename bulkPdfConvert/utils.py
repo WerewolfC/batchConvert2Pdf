@@ -1,7 +1,7 @@
 """Utils class containing constants and methods"""
 from dataclasses import dataclass, field
-from os import walk
 from pathlib import Path
+from enum import Enum
 from typing import List
 import concurrent.futures
 from threading import Timer
@@ -21,10 +21,18 @@ GUI_THEME = "flatly"
 GUI_CHECK = "-round-toggle"
 
 #emoji
-GREEN_CHECKMARK = 'WHITE HEAVY CHECK MARK'
-RED_CROSS_MARK = 'CROSS MARK'
-# PLUS_SIGN = 'LARGE PURPLE CIRCLE'
-PLUS_SIGN = 'WHITE SQUARE BUTTON'
+STATUS_OK = 'WHITE HEAVY CHECK MARK'
+STATUS_FAILED = 'CROSS MARK'
+STATUS_ADDED = 'WHITE SQUARE BUTTON'
+STATUS_UNKNOWN = 'BLACK QUESTION MARK ORNAMENT'
+
+
+class FileStatus(Enum):
+    """Class stores the status of a file element"""
+    OK = STATUS_OK
+    FAILED = STATUS_FAILED
+    ADDED = STATUS_ADDED
+    UNKNOWN = STATUS_UNKNOWN
 
 
 @dataclass
@@ -47,41 +55,15 @@ class ConvertOptions:
 
 
 @dataclass
-class ConvertFile:
+class ConvertFileFormat:
     """Contains the conversion input and put full path
     including the filename
     """
+    file_number: int = 0
+    conversion_status: FileStatus = FileStatus.UNKNOWN
     input_full_path: Path = ""
     output_full_path: Path = ""
 
-
-def recursive_check_names(output_full_path, object_pool, iterations):
-    """Check recursive if the output name exists in a pool
-    and returns the unique name
-    """
-    #check if pdf already exists and if so add -Copy to the end of name
-    if output_full_path not in [obj.output_full_path for obj in object_pool]:
-        return output_full_path
-    else:
-        new_full_path = output_full_path.with_stem(output_full_path.stem + f'({iterations})')
-        return recursive_check_names(new_full_path, object_pool, iterations + 1)
-
-def create_raw_data(source_folder):
-    """Recursively reads all the files in source folder
-    and creates a list to be displayed on GUI and parsed
-    """
-    raw_generator = []
-    raw_generator = walk(Path(source_folder))
-    file_list_data = []
-    for (current, _, files) in raw_generator:
-        #search for .doc and .docx extensions
-        doc_list = []
-        doc_list = [doc_file for doc_file in files\
-                    if doc_file.endswith((".docx", ".DOCX", ".doc", ".DOC"))]
-        if doc_list :
-            #add path + file list to the raw list
-            file_list_data.append(FolderContainer(current, doc_list))
-    return file_list_data
 
 def convert_to_pdf(*args):
     """Converts one doc file into pdf format

@@ -12,13 +12,16 @@ from bulkPdfConvert import utils
 
 class Presenter(Protocol):
     """Protocol implementation for Presenter class"""
-    def handle_set_convert_data(self):
+    def handle_start_convert(self):
         ...
 
     def handle_return_file_list(self):
         ...
 
     def handle_close_app(self):
+        ...
+
+    def handle_update_file_list(self, source_path):
         ...
 
 
@@ -35,9 +38,8 @@ class MainWindow(ttk.Window):
         self.actual_progress = tk.IntVar(master=self, value=0)
         self.opt_same_location = tk.IntVar(master=self, value=0)
         self.opt_bookmark = tk.IntVar(master=self, value=1)
-        self.file_count = 0
 
-        self.file_list_data = None
+        self.options = utils.ConvertOptions()
         self.presenter = None
         self.progress_tuple = (0, 0) # actual, total
         self.progress_percent = 0.0
@@ -156,7 +158,7 @@ class MainWindow(ttk.Window):
                                     master=frm_listing,
                                     bootstyle=utils.GUI_HEADERS,
                                     selectmode=tk.EXTENDED,
-                                    columns=[0, 1, 2],
+                                    columns=[0, 1, 2, 3, 4, 5],
                                     show="headings"
         )
         self.list_view.pack(side=tk.TOP, expand=True, fill=tk.BOTH)
@@ -172,8 +174,11 @@ class MainWindow(ttk.Window):
         self.list_view.configure(xscrollcommand=horiz_scroll_bar.set)
 
         self.list_view.heading(0, text='No.', anchor=tk.W)
-        self.list_view.heading(1, text='Filename', anchor=tk.W)
-        self.list_view.heading(2, text='Full path', anchor=tk.W)
+        self.list_view.heading(1, text='Stat', anchor=tk.W)
+        self.list_view.heading(2, text='Original filename', anchor=tk.W)
+        self.list_view.heading(3, text='Converted filename', anchor=tk.W)
+        self.list_view.heading(4, text='Source path', anchor=tk.W)
+        self.list_view.heading(5, text='Target path', anchor=tk.W)
         self.list_view.column(
             column=0,
             anchor=tk.W,
@@ -183,16 +188,33 @@ class MainWindow(ttk.Window):
         self.list_view.column(
             column=1,
             anchor=tk.W,
-            width=utility.scale_size(self, 200),
+            width=40, #utility.scale_size(self, 20),
             stretch=False
         )
         self.list_view.column(
             column=2,
             anchor=tk.W,
-            width=utility.scale_size(self, 450),
+            width=utility.scale_size(self, 200),
             stretch=False
         )
-
+        self.list_view.column(
+            column=3,
+            anchor=tk.W,
+            width=utility.scale_size(self, 200),
+            stretch=False
+        )
+        self.list_view.column(
+            column=4,
+            anchor=tk.W,
+            width=utility.scale_size(self, 400),
+            stretch=True
+        )
+        self.list_view.column(
+            column=5,
+            anchor=tk.W,
+            width=utility.scale_size(self, 400),
+            stretch=True
+        )
         self.btn_exit = ttk.Button(master=frm_listing,
                                         text="Exit",
                                         command=self._close,
@@ -208,11 +230,18 @@ class MainWindow(ttk.Window):
         frm_main.pack(expand=True, fill=tk.BOTH, padx=5, pady=5)
 
     def ask_file_list(self):
-        """Ask presenter for file list
+        """Ask presenter for inital file list
         based on the selected Source path
         """
         if Path(self.source_path.get()).is_dir():
             self.presenter.handle_return_file_list(Path(self.source_path.get()))
+
+    def ask_updated_list(self):
+        """Ask presenter for an updated list
+        which contains also the target path info
+        """
+        if Path(self.target_path.get()).is_dir() or self.options.use_same_folder:
+            self.presenter.handle_update_file_list()
 
     def _source_select(self):
         """Create source select button and selection dialog
@@ -242,12 +271,16 @@ class MainWindow(ttk.Window):
         target_path = askdirectory(title="Browse for save folder")
         if target_path:
             self.target_path.set(target_path)
+            self.update_options()
+            self.ask_updated_list()
             self.btn_convert.config(state=self.is_convert_ready())
 
-    def _callback_convert(self):
-        """Gather all the data used for conversion and
-        call presenter handle
+    def update_options(self):
+        """Update options attribute
         """
+        self.options.use_same_folder = self.opt_same_location.get()
+        self.options.create_bookmarks = self.opt_bookmark.get()
+
         target = 'not valid path'
         #if target selected and same location option not set or
         #target empty but same location option detected call presenter
@@ -258,12 +291,21 @@ class MainWindow(ttk.Window):
                 target = self.target_path.get()
 
         if Path(self.source_path.get()).is_dir() and Path(target).is_dir():
-            settings = utils.ConvertOptions(Path(self.source_path.get()),
-                                            Path(target),
-                                            self.opt_same_location.get(),
-                                            self.opt_bookmark.get()
-                                            )
-            self.presenter.handle_set_convert_data(settings)
+            self.options.folder_source_path = Path(self.source_path.get())
+            self.options.folder_target_path = Path(target)
+        else:
+            self.options.folder_source_path = None
+            self.options.folder_target_path = None
+
+    def get_options(self):
+        """Returns the options attribute
+        """
+        return self.options
+
+    def _callback_convert(self):
+        """Call presenter handle and pss the options data
+        """
+        self.presenter.handle_start_convert()
 
     def _toggle_target_button(self):
         """Toggle target browse button state
@@ -271,6 +313,8 @@ class MainWindow(ttk.Window):
         """
         if str(self.btn_select_target['state']) == tk.NORMAL:
             self.btn_select_target.config(state=tk.DISABLED)
+            self.update_options()
+            self.ask_updated_list()
         elif str(self.btn_select_target['state']) == tk.DISABLED:
             self.btn_select_target.config(state=tk.NORMAL)
 
@@ -287,24 +331,39 @@ class MainWindow(ttk.Window):
         self.list_view.delete(*self.list_view.get_children())
 
         # #populate the list
-        self.file_count = 0
-        for folder_element in list_data:
-            for each_file in folder_element.file_list:
-                self.file_count += 1
-                f_name = each_file
-                path = folder_element.folder_source_path
-                iid = self.list_view.insert(parent='',
-                                            index=tk.END,
-                                            values=( self.file_count,
-                                                    ttk.icons.Emoji.get(utils.PLUS_SIGN).char\
-                                                    + ' ' +f_name,
-                                                    path)
-                )
+        for each_file in list_data:
+            iid = self.list_view.insert(parent='',
+                                        index=tk.END,
+                                        values=(
+                                            each_file.file_number,
+                                            ttk.icons.Emoji.get(
+                                                each_file.conversion_status.value
+                                                ).char,
+                                            each_file.input_full_path.name,
+                                            each_file.output_full_path.name\
+                                                if each_file.output_full_path is not None\
+                                                else ttk.icons.Emoji.get(
+                                                    utils.FileStatus.UNKNOWN.value).char,
+                                            each_file.input_full_path.parents[0],
+                                            each_file.output_full_path.parents[0]\
+                                                 if each_file.output_full_path is not None\
+                                            else ttk.icons.Emoji.get(
+                                                utils.FileStatus.UNKNOWN.value
+                                                ).char,
+                                                )
+            )
         #if no suitable files are found... let the user know
-        if not self.file_count:
+        if len(list_data) == 0:
             iid = self.list_view.insert(parent='',
                                             index=tk.END,
-                                            values=(self.file_count, 'No documents found', '')
+                                            values=('',
+                                                    ttk.icons.Emoji.get(
+                                                        utils.FileStatus.UNKNOWN.value
+                                                        ).char,
+                                                     'No documents found',
+                                                     '',
+                                                     '',
+                                                     '')
                 )
 
     def update_progressbar(self, tuple_vals):
@@ -315,7 +374,7 @@ class MainWindow(ttk.Window):
         actual, total = tuple_vals
         try:
             self.progress_percent  = (actual * 100) / total
-        except Exception:
+        except ArithmeticError:
             self.progress_percent  = 0.0
 
         print(self.progress_percent)
