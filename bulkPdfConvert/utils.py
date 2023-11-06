@@ -20,15 +20,16 @@ GUI_HEADERS = "secondary"
 GUI_THEME = "flatly"
 GUI_CHECK = "-round-toggle"
 
-#emoji
-STATUS_OK = 'WHITE HEAVY CHECK MARK'
-STATUS_FAILED = 'CROSS MARK'
-STATUS_ADDED = 'WHITE SQUARE BUTTON'
-STATUS_UNKNOWN = 'BLACK QUESTION MARK ORNAMENT'
+# emoji
+STATUS_OK = "WHITE HEAVY CHECK MARK"
+STATUS_FAILED = "CROSS MARK"
+STATUS_ADDED = "WHITE SQUARE BUTTON"
+STATUS_UNKNOWN = "BLACK QUESTION MARK ORNAMENT"
 
 
 class FileStatus(Enum):
     """Class stores the status of a file element"""
+
     OK = STATUS_OK
     FAILED = STATUS_FAILED
     ADDED = STATUS_ADDED
@@ -40,17 +41,18 @@ class FolderContainer:
     """Contains a folder path and
     the file list contained in it
     """
+
     folder_source_path: Path = ""
     file_list: List[str] = field(default_factory=None)
 
 
 @dataclass
 class ConvertOptions:
-    """Contains the conversion options
-    """
+    """Contains the conversion options"""
+
     folder_source_path: Path = ""
     folder_target_path: Path = ""
-    use_same_folder : bool = False
+    use_same_folder: bool = False
     create_bookmarks: bool = True
 
 
@@ -59,6 +61,7 @@ class ConvertFileFormat:
     """Contains the conversion input and put full path
     including the filename
     """
+
     file_number: int = 0
     conversion_status: FileStatus = FileStatus.UNKNOWN
     input_full_path: Path = ""
@@ -66,18 +69,23 @@ class ConvertFileFormat:
 
 
 def convert_to_pdf(*args):
-    """Converts one doc file into pdf format
-    """
+    """Converts one doc file into pdf format"""
     word = win32Client.Dispatch("Word.Application", pythoncom.CoInitialize())
     wd_export_format_pdf = 17
     print(args)
     print(type(args))
-    bookmark_opt, file_info, = args[0]
+    (
+        bookmark_opt,
+        file_info,
+    ) = args[0]
     doc = word.Documents.Open(str(file_info.input_full_path))
-    doc.ExportAsFixedFormat (OutputFileName=str(file_info.output_full_path),
-                             ExportFormat=wd_export_format_pdf,
-                             CreateBookmarks=bookmark_opt)
+    doc.ExportAsFixedFormat(
+        OutputFileName=str(file_info.output_full_path),
+        ExportFormat=wd_export_format_pdf,
+        CreateBookmarks=bookmark_opt,
+    )
     doc.Close(0)
+
 
 def main(*args):
     """Function used to start PDF conversion threads
@@ -88,13 +96,16 @@ def main(*args):
     bookmark_state = map_bookmark.get(opt_bookmark)
     processed = 1
     with concurrent.futures.ThreadPoolExecutor(4) as executor:
-        for active_task in executor.map(funct, [(bookmark_state, files) for files in file_list]):
+        for active_task in executor.map(
+            funct, [(bookmark_state, files) for files in file_list]
+        ):
             conn.send((processed, len(file_list)))
-            print(f'type {type(active_task)}')
-            print(f'type {active_task}')
-            print(f'Files processed {processed}/{len(file_list)}')
-            processed+=1
+            print(f"type {type(active_task)}")
+            print(f"type {active_task}")
+            print(f"Files processed {processed}/{len(file_list)}")
+            processed += 1
     return
+
 
 def disable_event():
     """Empty function used to disable windows close x button"""
@@ -102,8 +113,8 @@ def disable_event():
 
 
 class RepeatTimer(Timer):
-    """threading Timer subclass
-    """
+    """threading Timer subclass"""
+
     def run(self):
         while not self.finished.wait(self.interval):
-            self.function(*self.args,**self.kwargs)
+            self.function(*self.args, **self.kwargs)

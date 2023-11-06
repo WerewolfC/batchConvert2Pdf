@@ -12,6 +12,7 @@ from bulkPdfConvert import utils
 
 class Presenter(Protocol):
     """Protocol implementation for Presenter class"""
+
     def handle_start_convert(self):
         ...
 
@@ -27,13 +28,16 @@ class Presenter(Protocol):
 
 class MainWindow(ttk.Window):
     """Main GUI class"""
+
     def __init__(self, theme_name):
         super().__init__(theme_name)
         self.title(utils.WINDOW_TITLE)
         self.geometry(utils.WINDOW_SIZE)
         self.resizable(True, True)
 
-        self.source_path = tk.StringVar(master=self, value="Please select source folder")
+        self.source_path = tk.StringVar(
+            master=self, value="Please select source folder"
+        )
         self.target_path = tk.StringVar(master=self, value="Please select save folder")
         self.actual_progress = tk.IntVar(master=self, value=0)
         self.opt_same_location = tk.IntVar(master=self, value=0)
@@ -41,7 +45,7 @@ class MainWindow(ttk.Window):
 
         self.options = utils.ConvertOptions()
         self.presenter = None
-        self.progress_tuple = (0, 0) # actual, total
+        self.progress_tuple = (0, 0)  # actual, total
         self.progress_percent = 0.0
         self.convert_ready = ttk.DISABLED
 
@@ -56,177 +60,168 @@ class MainWindow(ttk.Window):
         frm_convert = ttk.Frame(master=frm_main)
         frm_options = ttk.Frame(master=frm_convert)
 
-        #source elements
-        tk.Label(master=frm_source_select, text=utils.LBL_SOURCE_FOLDER).pack(side=tk.LEFT,
-                                                                            expand=False,
-                                                                            fill=tk.X,
-                                                                            padx=5,
-                                                                            anchor=tk.W)
-        self.ent_source = ttk.Entry(master=frm_source_select,
-                                  textvariable=self.source_path,
-                                  state=tk.DISABLED,
-                                  justify=tk.LEFT,
-                                  bootstyle="readonly")
-        self.ent_source.pack(side=tk.LEFT,
-                            fill=tk.X,
-                            padx=5,
-                            expand=True)
+        # source elements
+        tk.Label(master=frm_source_select, text=utils.LBL_SOURCE_FOLDER).pack(
+            side=tk.LEFT, expand=False, fill=tk.X, padx=5, anchor=tk.W
+        )
+        self.ent_source = ttk.Entry(
+            master=frm_source_select,
+            textvariable=self.source_path,
+            state=tk.DISABLED,
+            justify=tk.LEFT,
+            bootstyle="readonly",
+        )
+        self.ent_source.pack(side=tk.LEFT, fill=tk.X, padx=5, expand=True)
 
-        self.btn_select_source = ttk.Button(master=frm_source_select,
-                                        text="Browse",
-                                        width=10,
-                                        command=self._source_select,
-                                        bootstyle=utils.GUI_STYLE)
-        ToolTip(self.btn_select_source, text="Select starting folder - recursive conversion")
+        self.btn_select_source = ttk.Button(
+            master=frm_source_select,
+            text="Browse",
+            width=10,
+            command=self._source_select,
+            bootstyle=utils.GUI_STYLE,
+        )
+        ToolTip(
+            self.btn_select_source, text="Select starting folder - recursive conversion"
+        )
         self.btn_select_source.pack(side=tk.LEFT)
-        self.bind('<Control-1>', lambda event:self._source_select())
+        self.bind("<Control-1>", lambda event: self._source_select())
         frm_source_select.pack(side=tk.TOP, fill=tk.X, pady=5)
 
-        #target elements
-        tk.Label(master=frm_target_select, text=utils.LBL_TARGET_FOLDER).pack(side=tk.LEFT,
-                                                                            expand=False,
-                                                                            fill=tk.X,
-                                                                            padx=5,
-                                                                            anchor=tk.W)
-        self.ent_arget = ttk.Entry(master=frm_target_select,
-                                  textvariable=self.target_path,
-                                  state=tk.DISABLED,
-                                  justify=tk.LEFT,
-                                  bootstyle="readonly")
-        self.ent_arget.pack(side=tk.LEFT,
-                            fill=tk.X,
-                            padx=5,
-                            expand=True)
+        # target elements
+        tk.Label(master=frm_target_select, text=utils.LBL_TARGET_FOLDER).pack(
+            side=tk.LEFT, expand=False, fill=tk.X, padx=5, anchor=tk.W
+        )
+        self.ent_arget = ttk.Entry(
+            master=frm_target_select,
+            textvariable=self.target_path,
+            state=tk.DISABLED,
+            justify=tk.LEFT,
+            bootstyle="readonly",
+        )
+        self.ent_arget.pack(side=tk.LEFT, fill=tk.X, padx=5, expand=True)
 
-        self.btn_select_target = ttk.Button(master=frm_target_select,
-                                        text="Browse",
-                                        width=10,
-                                        command=self._target_select,
-                                        state=tk.NORMAL,
-                                        bootstyle=utils.GUI_STYLE)
+        self.btn_select_target = ttk.Button(
+            master=frm_target_select,
+            text="Browse",
+            width=10,
+            command=self._target_select,
+            state=tk.NORMAL,
+            bootstyle=utils.GUI_STYLE,
+        )
         ToolTip(self.btn_select_target, text="Select storage folder")
         self.btn_select_target.pack(side=tk.LEFT)
-        self.bind('<Control-2>', lambda event:self._target_select())
+        self.bind("<Control-2>", lambda event: self._target_select())
         frm_target_select.pack(side=tk.TOP, fill=tk.X, pady=5)
 
-        #options, convert and progress bar
-        self.btn_convert = ttk.Button(master=frm_convert,
-                                command=self._callback_convert,
-                                state=self.convert_ready,
-                                text="Convert",
-                                bootstyle=utils.GUI_STYLE,
-                                width=10
-                                )
+        # options, convert and progress bar
+        self.btn_convert = ttk.Button(
+            master=frm_convert,
+            command=self._callback_convert,
+            state=self.convert_ready,
+            text="Convert",
+            bootstyle=utils.GUI_STYLE,
+            width=10,
+        )
         ToolTip(self.btn_convert, text="Convert to PDF format")
         self.btn_convert.pack(side=tk.RIGHT, padx=110)
-        self.bind('<space>', lambda event:self._callback_convert())
+        self.bind("<space>", lambda event: self._callback_convert())
 
-        ttk.Checkbutton(master=frm_options,
-                        variable=self.opt_same_location,
-                        command=self._toggle_target_button,
-                        text="Same location",
-                        onvalue=1,
-                        offvalue=0,
-                        bootstyle=utils.GUI_STYLE+utils.GUI_CHECK
-                        ).pack(side=tk.TOP, expand=True, fill=tk.X)
-        ttk.Checkbutton(master=frm_options,
-                variable=self.opt_bookmark,
-                text="Create bookmarks",
-                onvalue=1,
-                offvalue=0,
-                bootstyle=utils.GUI_STYLE+utils.GUI_CHECK
-                ).pack(side=tk.TOP, expand=True, fill=tk.X)
+        ttk.Checkbutton(
+            master=frm_options,
+            variable=self.opt_same_location,
+            command=self._toggle_target_button,
+            text="Same location",
+            onvalue=1,
+            offvalue=0,
+            bootstyle=utils.GUI_STYLE + utils.GUI_CHECK,
+        ).pack(side=tk.TOP, expand=True, fill=tk.X)
+        ttk.Checkbutton(
+            master=frm_options,
+            variable=self.opt_bookmark,
+            text="Create bookmarks",
+            onvalue=1,
+            offvalue=0,
+            bootstyle=utils.GUI_STYLE + utils.GUI_CHECK,
+        ).pack(side=tk.TOP, expand=True, fill=tk.X)
         frm_options.pack(side=tk.RIGHT, fill=tk.X, pady=5)
 
         frm_convert.pack(side=tk.TOP, fill=tk.X)
 
-        #progress bar
-        self.lbl_convert = ttk.Label(master=frm_progress,
-                                     text='Nothing to convert yet!',
-                                     justify=tk.CENTER,
-                                     anchor=tk.W
-                                     )
+        # progress bar
+        self.lbl_convert = ttk.Label(
+            master=frm_progress,
+            text="Nothing to convert yet!",
+            justify=tk.CENTER,
+            anchor=tk.W,
+        )
         self.lbl_convert.pack(side=tk.TOP, fill=tk.X, padx=30)
-        self.prgress_bar = ttk.Progressbar(master=frm_progress,
-                                           mode=ttk.DETERMINATE,
-                                           bootstyle="success-striped")
+        self.prgress_bar = ttk.Progressbar(
+            master=frm_progress, mode=ttk.DETERMINATE, bootstyle="success-striped"
+        )
         self.prgress_bar.pack(side=tk.TOP, fill=tk.X, pady=2, padx=30)
         frm_progress.pack(side=tk.TOP, fill=tk.X, pady=5)
 
-        #list_view
+        # list_view
         self.list_view = ttk.Treeview(
-                                    master=frm_listing,
-                                    bootstyle=utils.GUI_HEADERS,
-                                    selectmode=tk.EXTENDED,
-                                    columns=[0, 1, 2, 3, 4, 5],
-                                    show="headings"
+            master=frm_listing,
+            bootstyle=utils.GUI_HEADERS,
+            selectmode=tk.EXTENDED,
+            columns=[0, 1, 2, 3, 4, 5],
+            show="headings",
         )
         self.list_view.pack(side=tk.TOP, expand=True, fill=tk.BOTH)
-        vert_scroll_bar = ttk.Scrollbar(master=self.list_view,
-                                   orient=tk.VERTICAL,
-                                   command=self.list_view.yview)
+        vert_scroll_bar = ttk.Scrollbar(
+            master=self.list_view, orient=tk.VERTICAL, command=self.list_view.yview
+        )
         vert_scroll_bar.pack(side=tk.RIGHT, fill=tk.Y)
         self.list_view.configure(yscrollcommand=vert_scroll_bar.set)
-        horiz_scroll_bar = ttk.Scrollbar(master=self.list_view,
-                                   orient=tk.HORIZONTAL,
-                                   command=self.list_view.xview)
+        horiz_scroll_bar = ttk.Scrollbar(
+            master=self.list_view, orient=tk.HORIZONTAL, command=self.list_view.xview
+        )
         horiz_scroll_bar.pack(side=tk.BOTTOM, fill=tk.X)
         self.list_view.configure(xscrollcommand=horiz_scroll_bar.set)
 
-        self.list_view.heading(0, text='No.', anchor=tk.W)
-        self.list_view.heading(1, text='Stat', anchor=tk.W)
-        self.list_view.heading(2, text='Original filename', anchor=tk.W)
-        self.list_view.heading(3, text='Converted filename', anchor=tk.W)
-        self.list_view.heading(4, text='Source path', anchor=tk.W)
-        self.list_view.heading(5, text='Target path', anchor=tk.W)
+        self.list_view.heading(0, text="No.", anchor=tk.W)
+        self.list_view.heading(1, text="Stat", anchor=tk.W)
+        self.list_view.heading(2, text="Original filename", anchor=tk.W)
+        self.list_view.heading(3, text="Converted filename", anchor=tk.W)
+        self.list_view.heading(4, text="Source path", anchor=tk.W)
+        self.list_view.heading(5, text="Target path", anchor=tk.W)
         self.list_view.column(
-            column=0,
-            anchor=tk.W,
-            width=utility.scale_size(self, 40),
-            stretch=False
+            column=0, anchor=tk.W, width=utility.scale_size(self, 40), stretch=False
         )
         self.list_view.column(
             column=1,
             anchor=tk.W,
-            width=40, #utility.scale_size(self, 20),
-            stretch=False
+            width=40,  # utility.scale_size(self, 20),
+            stretch=False,
         )
         self.list_view.column(
-            column=2,
-            anchor=tk.W,
-            width=utility.scale_size(self, 200),
-            stretch=False
+            column=2, anchor=tk.W, width=utility.scale_size(self, 200), stretch=False
         )
         self.list_view.column(
-            column=3,
-            anchor=tk.W,
-            width=utility.scale_size(self, 200),
-            stretch=False
+            column=3, anchor=tk.W, width=utility.scale_size(self, 200), stretch=False
         )
         self.list_view.column(
-            column=4,
-            anchor=tk.W,
-            width=utility.scale_size(self, 400),
-            stretch=True
+            column=4, anchor=tk.W, width=utility.scale_size(self, 400), stretch=True
         )
         self.list_view.column(
-            column=5,
-            anchor=tk.W,
-            width=utility.scale_size(self, 400),
-            stretch=True
+            column=5, anchor=tk.W, width=utility.scale_size(self, 400), stretch=True
         )
-        self.btn_exit = ttk.Button(master=frm_listing,
-                                        text="Exit",
-                                        command=self._close,
-                                        width=10,
-                                        state=tk.NORMAL,
-                                        bootstyle=utils.GUI_STYLE)
+        self.btn_exit = ttk.Button(
+            master=frm_listing,
+            text="Exit",
+            command=self._close,
+            width=10,
+            state=tk.NORMAL,
+            bootstyle=utils.GUI_STYLE,
+        )
         ToolTip(self.btn_exit, text="Exit")
         self.btn_exit.pack(side=tk.TOP, pady=5)
-        self.bind('<Control-q>', lambda event:self._close())
+        self.bind("<Control-q>", lambda event: self._close())
 
         frm_listing.pack(side=tk.TOP, expand=True, fill=tk.BOTH)
-        #pack main frame
+        # pack main frame
         frm_main.pack(expand=True, fill=tk.BOTH, padx=5, pady=5)
 
     def ask_file_list(self):
@@ -244,8 +239,7 @@ class MainWindow(ttk.Window):
             self.presenter.handle_update_file_list()
 
     def _source_select(self):
-        """Create source select button and selection dialog
-        """
+        """Create source select button and selection dialog"""
         source_path = askdirectory(title="Browse for top source folder")
         if source_path:
             self.source_path.set(source_path)
@@ -259,15 +253,18 @@ class MainWindow(ttk.Window):
         are fullfilled.
         It returns Active/Disabled values
         """
-        if Path(self.source_path.get()).exists()\
-        and ((Path(self.target_path.get()).exists() and self.opt_same_location.get() == 0)\
-            or self.opt_same_location.get() == 1):
+        if Path(self.source_path.get()).exists() and (
+            (
+                Path(self.target_path.get()).exists()
+                and self.opt_same_location.get() == 0
+            )
+            or self.opt_same_location.get() == 1
+        ):
             return ttk.ACTIVE
         return ttk.DISABLED
 
     def _target_select(self):
-        """Create target select button and selection dialog
-        """
+        """Create target select button and selection dialog"""
         target_path = askdirectory(title="Browse for save folder")
         if target_path:
             self.target_path.set(target_path)
@@ -276,14 +273,13 @@ class MainWindow(ttk.Window):
             self.btn_convert.config(state=self.is_convert_ready())
 
     def update_options(self):
-        """Update options attribute
-        """
+        """Update options attribute"""
         self.options.use_same_folder = self.opt_same_location.get()
         self.options.create_bookmarks = self.opt_bookmark.get()
 
-        target = 'not valid path'
-        #if target selected and same location option not set or
-        #target empty but same location option detected call presenter
+        target = "not valid path"
+        # if target selected and same location option not set or
+        # target empty but same location option detected call presenter
         if Path(self.source_path.get()).is_dir():
             if self.opt_same_location.get() == 1:
                 target = self.source_path.get()
@@ -298,24 +294,22 @@ class MainWindow(ttk.Window):
             self.options.folder_target_path = None
 
     def get_options(self):
-        """Returns the options attribute
-        """
+        """Returns the options attribute"""
         return self.options
 
     def _callback_convert(self):
-        """Call presenter handle and pss the options data
-        """
+        """Call presenter handle and pss the options data"""
         self.presenter.handle_start_convert()
 
     def _toggle_target_button(self):
         """Toggle target browse button state
         and try to send the convert options
         """
-        if str(self.btn_select_target['state']) == tk.NORMAL:
+        if str(self.btn_select_target["state"]) == tk.NORMAL:
             self.btn_select_target.config(state=tk.DISABLED)
             self.update_options()
             self.ask_updated_list()
-        elif str(self.btn_select_target['state']) == tk.DISABLED:
+        elif str(self.btn_select_target["state"]) == tk.DISABLED:
             self.btn_select_target.config(state=tk.NORMAL)
 
         self.btn_convert.config(state=self.is_convert_ready())
@@ -325,70 +319,67 @@ class MainWindow(ttk.Window):
         self.presenter.handle_close_app()
 
     def update_list_view(self, list_data):
-        """Update tree view with info from parameter list_data
-        """
-        #clear the treeview
+        """Update tree view with info from parameter list_data"""
+        # clear the treeview
         self.list_view.delete(*self.list_view.get_children())
 
         # #populate the list
         for each_file in list_data:
-            iid = self.list_view.insert(parent='',
-                                        index=tk.END,
-                                        values=(
-                                            each_file.file_number,
-                                            ttk.icons.Emoji.get(
-                                                each_file.conversion_status.value
-                                                ).char,
-                                            each_file.input_full_path.name,
-                                            each_file.output_full_path.name\
-                                                if each_file.output_full_path is not None\
-                                                else ttk.icons.Emoji.get(
-                                                    utils.FileStatus.UNKNOWN.value).char,
-                                            each_file.input_full_path.parents[0],
-                                            each_file.output_full_path.parents[0]\
-                                                 if each_file.output_full_path is not None\
-                                            else ttk.icons.Emoji.get(
-                                                utils.FileStatus.UNKNOWN.value
-                                                ).char,
-                                                )
+            iid = self.list_view.insert(
+                parent="",
+                index=tk.END,
+                values=(
+                    each_file.file_number,
+                    ttk.icons.Emoji.get(each_file.conversion_status.value).char,
+                    each_file.input_full_path.name,
+                    each_file.output_full_path.name
+                    if each_file.output_full_path is not None
+                    else ttk.icons.Emoji.get(utils.FileStatus.UNKNOWN.value).char,
+                    each_file.input_full_path.parents[0],
+                    each_file.output_full_path.parents[0]
+                    if each_file.output_full_path is not None
+                    else ttk.icons.Emoji.get(utils.FileStatus.UNKNOWN.value).char,
+                ),
             )
-        #if no suitable files are found... let the user know
+        # if no suitable files are found... let the user know
         if len(list_data) == 0:
-            iid = self.list_view.insert(parent='',
-                                            index=tk.END,
-                                            values=('',
-                                                    ttk.icons.Emoji.get(
-                                                        utils.FileStatus.UNKNOWN.value
-                                                        ).char,
-                                                     'No documents found',
-                                                     '',
-                                                     '',
-                                                     '')
-                )
+            iid = self.list_view.insert(
+                parent="",
+                index=tk.END,
+                values=(
+                    "",
+                    ttk.icons.Emoji.get(utils.FileStatus.UNKNOWN.value).char,
+                    "No documents found",
+                    "",
+                    "",
+                    "",
+                ),
+            )
 
     def update_progressbar(self, tuple_vals):
-        """Updates the progress on progressbar
-        """
-        print(f'progressbar values {tuple_vals}')
+        """Updates the progress on progressbar"""
+        print(f"progressbar values {tuple_vals}")
         self.progress_tuple = tuple_vals
         actual, total = tuple_vals
         try:
-            self.progress_percent  = (actual * 100) / total
+            self.progress_percent = (actual * 100) / total
         except ArithmeticError:
-            self.progress_percent  = 0.0
+            self.progress_percent = 0.0
 
         print(self.progress_percent)
 
-        self.prgress_bar['value'] = self.progress_percent
+        self.prgress_bar["value"] = self.progress_percent
         self.update_progress_label()
 
     def update_progress_label(self):
         """Update text on the progress label"""
-        print('upgrade label')
+        print("upgrade label")
         if self.progress_percent == 0.0:
-            self.lbl_convert.config(text='No conversion active')
+            self.lbl_convert.config(text="No conversion active")
         elif self.progress_percent == 100.0:
-            self.lbl_convert.config(text='Conversion finished!')
+            self.lbl_convert.config(text="Conversion finished!")
         else:
-            self.lbl_convert.config(text=f'Converting file {str(self.progress_tuple[0])}/'\
-                                    f'{str(self.progress_tuple[1])}')
+            self.lbl_convert.config(
+                text=f"Converting file {str(self.progress_tuple[0])}/"
+                f"{str(self.progress_tuple[1])}"
+            )
